@@ -98,6 +98,6 @@ def module():
 		description='',
 		maintainer='',
 		delivery_methods=['bash'],
-		depends=['shutit.tk.setup']
+		depends=['tk.shutit.vagrant.vagrant.vagrant','shutit-libary.virtualbox.virtualbox.virtualbox']
 	)
 
