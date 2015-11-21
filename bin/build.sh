@@ -7,7 +7,7 @@ then
 	exit 1
 fi
 pushd ..
-$SHUTIT build -d bash "$@"
+$SHUTIT build --video 5 -d bash "$@"
 if [[ $? != 0 ]]
 then
 	popd
