@@ -17,6 +17,7 @@ class netnamespaces_intro(ShutItModule):
 		shutit.login(command='vagrant ssh')
 		shutit.login(command='sudo su -')
 		shutit.install('openvswitch-switch')
+		shutit.install('dnsmasq')
 		shutit.send('ip link',note='Show the network interfaces on the VM')
 		shutit.send('ip addr',note='Show the ip address')
 		shutit.send('ip route',note='Show the routing table')
@@ -67,22 +68,22 @@ class netnamespaces_intro(ShutItModule):
 		shutit.send('ping -c 3 10.0.0.2',note='We should be able to ping the other network')
 		shutit.logout()
 	
-		# 	
+		# Create vlans
 		shutit.send('ovs-vsctl set port veth-r tag=100',note='Move the red veth to VLAN 100')
 		shutit.send('ovs-vsctl set port veth-g tag=200',note='Move the green veth to VLAN 200')
-		shutit.send('ip netns exec red ip address del 10.0.0.1/24 dev eth-r',note='Since the namespaces are on separate VLANs, we now want to scrub the IP addresses. Do the red one.')
-		shutit.send('ip netns exec green ip address del 10.0.0.2/24 dev eth-g',note='Since the namespaces are on separate VLANs, we now want to scrub the IP addresses. Do the green one.')
+		shutit.send('ip netns exec red ip address del 10.0.0.1/24 dev eth0-r',note='Since the namespaces are on separate VLANs, we now want to scrub the IP addresses. Do the red one.')
+		shutit.send('ip netns exec green ip address del 10.0.0.2/24 dev eth0-g',note='Since the namespaces are on separate VLANs, we now want to scrub the IP addresses. Do the green one.')
 		
 		# Add two new net namespaces for our DHCP servers.
 		# Connect through OpenVSwitch internal ports this time rather than veth pairs.
-		shutit.send('ip netns add dchp-r',note='We are going to hook up two new namespaces directly to the OpenVSwitch using internal ports rather than through a veth pair. Add a net namespace for our red dhcp server.')
+		shutit.send('ip netns add dhcp-r',note='We are going to hook up two new namespaces directly to the OpenVSwitch using internal ports rather than through a veth pair. Add a net namespace for our red dhcp server.')
 		shutit.send('ip netns add dhcp-g',note='Add a net namespace for the green dhcp server')
 
-		shutit.send('ovs-vsctl add-port OVS1 tap-r',note='Creates a new port on openvswitch for the red dhcp namespace')
+		shutit.send('ovs-vsctl add-port OVS-1 tap-r',note='Creates a new port on openvswitch for the red dhcp namespace')
 		shutit.send('ovs-vsctl set interface tap-r type=internal',note='Set the port to the internal type')
 		shutit.send('ovs-vsctl set port tap-r tag=100',note='Places the port into VLAN100')
 
-		shutit.send('ovs-vsctl add-port OVS1 tap-g',note='Creates a new port on openvswitch for the green dhcp namespace')
+		shutit.send('ovs-vsctl add-port OVS-1 tap-g',note='Creates a new port on openvswitch for the green dhcp namespace')
 		shutit.send('ovs-vsctl set interface tap-g type=internal',note='Set the port to the internal type')
 		shutit.send('ovs-vsctl set port tap-g tag=200',note='Places the port into VLAN200')
 
@@ -93,13 +94,13 @@ class netnamespaces_intro(ShutItModule):
 		shutit.send('ip link set tap-g netns dhcp-g',note='Put the tap-g port into the dhcp-g namespace from the root namespace')
 		shutit.send('ip link',note='The ports are gone from root namespace')
 
-		shutit.login('ip netns exec dhcp-r bash',note='Enter the new red dhcp namespace')
+		shutit.login(command='ip netns exec dhcp-r bash',note='Enter the new red dhcp namespace')
 		shutit.send('ip link set dev lo up',note='Turn up loopback interface')
 		shutit.send('ip link set dev tap-r up',note='Turn up tap-r interface')
 		shutit.send('ip address add 10.50.50.2/24 dev tap-r',note='Give the new interface a name')
 		shutit.logout(note='Exit the net namespace')
 
-		shutit.login('ip netns exec dhcp-g bash',note='Enter the new green dhcp namespace')
+		shutit.login(command='ip netns exec dhcp-g bash',note='Enter the new green dhcp namespace')
 		shutit.send('ip link set dev lo up',note='Turn up loopback interface')
 		shutit.send('ip link set dev tap-g up',note='Turn up tap-g interface')
 		shutit.send('ip address add 10.50.50.2/24 dev tap-g',note='Give the new interface a name, we can use the same address as before as we are on different VLANs')
@@ -109,12 +110,12 @@ class netnamespaces_intro(ShutItModule):
 		shutit.send('ip netns exec dhcp-r dnsmasq --interface=tap-r --dhcp-range 10.50.50.10,10.50.50.100,255.255.255.0',note='Set up the dnsmasq process in the red namespace')
 		shutit.send('ip netns exec dhcp-g dnsmasq --interface=tap-g --dhcp-range 10.50.50.10,10.50.50.100,255.255.255.0',note='Set up the dnsmasq process in the red namespace')
 
-		shutit.send('''ip netns identify $(ps -ef dnsmasq | awk '{print $2}' | head -1)''',note='Show that the dnsmasq pid belongs to a namespace we just created')
-		shutit.send('''ip netns identify $(ps -ef dnsmasq | awk '{print $2}' | tail -1)''',note='Show that the dnsmasq pid belongs to a namespace we just created')
+		shutit.send('''ip netns identify $(ps -ef | grep 'nobody.*dnsmasq' | grep -v grep | awk '{print $2}' | head -1)''',note='Show that the dnsmasq pid belongs to a namespace we just created')
+		shutit.send('''ip netns identify $(ps -ef | grep 'nobody.*dnsmasq' | grep -v grep | awk '{print $2}' | tail -1)''',note='Show that the dnsmasq pid belongs to a namespace we just created')
 
-		shutit.send('ip netns exec red dhclient dhcp-r',note='Get an ip address from dhcp')
+		shutit.send('ip netns exec red dhclient eth0-r',note='Get an ip address from dhcp')
 		shutit.send('ip netns exec red ip a',note='Show the ip address')
-		shutit.send('ip netns exec green dhclient dhcp-g',note='Get an ip address from dhcp in the green namespace')
+		shutit.send('ip netns exec green dhclient eth0-g',note='Get an ip address from dhcp in the green namespace')
 		shutit.send('ip netns exec green ip a',note='Show the ip address')
 
 		shutit.logout()
