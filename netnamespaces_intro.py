@@ -108,15 +108,15 @@ class netnamespaces_intro(ShutItModule):
 
 		# Now run dnsmasq processes
 		shutit.send('ip netns exec dhcp-r dnsmasq --interface=tap-r --dhcp-range 10.50.50.10,10.50.50.100,255.255.255.0',note='Set up the dnsmasq process in the red namespace')
-		shutit.send('ip netns exec dhcp-g dnsmasq --interface=tap-g --dhcp-range 10.50.50.10,10.50.50.100,255.255.255.0',note='Set up the dnsmasq process in the red namespace')
+		shutit.send('ip netns exec dhcp-g dnsmasq --interface=tap-g --dhcp-range 10.50.50.10,10.50.50.100,255.255.255.0',note='Set up the dnsmasq process in the green namespace')
 
 		shutit.send('''ip netns identify $(ps -ef | grep 'nobody.*dnsmasq' | grep -v grep | awk '{print $2}' | head -1)''',note='Show that the dnsmasq pid belongs to a namespace we just created')
 		shutit.send('''ip netns identify $(ps -ef | grep 'nobody.*dnsmasq' | grep -v grep | awk '{print $2}' | tail -1)''',note='Show that the dnsmasq pid belongs to a namespace we just created')
 
-		shutit.send('ip netns exec red dhclient eth0-r',note='Get an ip address from dhcp')
-		shutit.send('ip netns exec red ip a',note='Show the ip address')
-		shutit.send('ip netns exec green dhclient eth0-g',note='Get an ip address from dhcp in the green namespace')
-		shutit.send('ip netns exec green ip a',note='Show the ip address')
+		shutit.send('ip netns exec red dhclient eth0-r',note='Get an ip address from dhcp on the eth0-r interface in the red namespace')
+		shutit.send('ip netns exec red ip a',note='Show the ip address in the red namespace')
+		shutit.send('ip netns exec green dhclient eth0-g',note='Get an ip address from dhcp on the eth0-g interface in the green namespace')
+		shutit.send('ip netns exec green ip a',note='Show the ip address in the green namespace')
 
 		shutit.logout()
 		shutit.logout()
